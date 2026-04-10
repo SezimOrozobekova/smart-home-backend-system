@@ -1,0 +1,72 @@
+package kg.alatoo.smarthousebackendsystem.device.service;
+
+import kg.alatoo.smarthousebackendsystem.device.entity.Device;
+import kg.alatoo.smarthousebackendsystem.device.entity.DeviceState;
+import kg.alatoo.smarthousebackendsystem.device.entity.DeviceType;
+import kg.alatoo.smarthousebackendsystem.device.mapper.DeviceMapper;
+import kg.alatoo.smarthousebackendsystem.device.payload.request.CreateDeviceRequest;
+import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceResponse;
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceTypeRepository;
+import kg.alatoo.smarthousebackendsystem.room.entity.Room;
+import kg.alatoo.smarthousebackendsystem.room.repository.RoomRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class DeviceService {
+
+    private final DeviceRepository deviceRepository;
+    private final DeviceTypeRepository deviceTypeRepository;
+    private final DeviceStateRepository deviceStateRepository;
+    private final RoomRepository roomRepository;
+    private final DeviceMapper deviceMapper;
+
+    public List<DeviceResponse> getAllByRoom(UUID roomId) {
+        return deviceRepository.findAllByRoomId(roomId)
+                .stream()
+                .map(deviceMapper::toResponse)
+                .toList();
+    }
+
+    public DeviceResponse getById(UUID id) {
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Device not found"));
+        return deviceMapper.toResponse(device);
+    }
+
+    @Transactional
+    public DeviceResponse create(CreateDeviceRequest request) {
+        Room room = roomRepository.findById(request.roomId())
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+
+        DeviceType deviceType = deviceTypeRepository.findById(request.deviceTypeId())
+                .orElseThrow(() -> new RuntimeException("Device type not found"));
+
+        Device device = new Device();
+        device.setRoom(room);
+        device.setDeviceType(deviceType);
+        device.setName(request.name());
+        device.setExternalId(request.externalId());
+        device.setModel(request.model());
+        device.setFirmwareVersion(request.firmwareVersion());
+        device.setIsActive(request.isActive());
+
+        Device savedDevice = deviceRepository.save(device);
+
+        DeviceState state = new DeviceState();
+        state.setDevice(savedDevice);
+        state.setIsOnline(false);
+        state.setIsOn(false);
+        deviceStateRepository.save(state);
+
+        return deviceMapper.toResponse(savedDevice);
+    }
+}
