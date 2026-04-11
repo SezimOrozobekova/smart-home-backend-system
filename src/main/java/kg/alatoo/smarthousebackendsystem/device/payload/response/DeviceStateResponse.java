@@ -1,5 +1,7 @@
 package kg.alatoo.smarthousebackendsystem.device.payload.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -12,7 +14,7 @@ public record DeviceStateResponse(
         BigDecimal powerWatts,
         BigDecimal peakCapacityWatts,
         Instant lastSeenAt,
-        String rawState,
+        JsonNode rawState,
         Instant recordedAt
 ) {
 }

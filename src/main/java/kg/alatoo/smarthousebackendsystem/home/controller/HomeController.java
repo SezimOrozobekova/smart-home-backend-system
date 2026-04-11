@@ -3,6 +3,7 @@ package kg.alatoo.smarthousebackendsystem.home.controller;
 import jakarta.validation.Valid;
 import kg.alatoo.smarthousebackendsystem.home.payload.request.CreateHomeRequest;
 import kg.alatoo.smarthousebackendsystem.home.payload.response.HomeResponse;
+import kg.alatoo.smarthousebackendsystem.home.payload.response.RoomDevicesResponse;
 import kg.alatoo.smarthousebackendsystem.home.service.HomeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -30,5 +31,10 @@ public class HomeController {
     @PostMapping
     public HomeResponse createHome(@Valid @RequestBody CreateHomeRequest request) {
         return homeService.createHome(request);
+    }
+
+    @GetMapping("/{homeId}/devices-by-room")
+    public List<RoomDevicesResponse> getDevicesByRoom(@PathVariable UUID homeId) {
+        return homeService.getDevicesByRoom(homeId);
     }
 }

@@ -27,4 +27,9 @@ public class DeviceStateController {
     ) {
         return deviceStateService.updateByDeviceId(deviceId, request);
     }
+
+    @PostMapping("/{deviceId}/toggle")
+    public DeviceStateResponse toggleDevice(@PathVariable UUID deviceId) {
+        return deviceStateService.toggleDevice(deviceId);
+    }
 }

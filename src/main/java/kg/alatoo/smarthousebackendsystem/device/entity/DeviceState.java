@@ -1,8 +1,11 @@
 package kg.alatoo.smarthousebackendsystem.device.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -40,8 +43,9 @@ public class DeviceState {
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_state", columnDefinition = "jsonb")
-    private String rawState;
+    private JsonNode rawState;
 
     @LastModifiedDate
     @Column(name = "recorded_at", nullable = false)
