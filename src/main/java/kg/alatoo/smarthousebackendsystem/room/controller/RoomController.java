@@ -4,7 +4,9 @@ import jakarta.validation.Valid;
 import kg.alatoo.smarthousebackendsystem.room.payload.request.CreateRoomRequest;
 import kg.alatoo.smarthousebackendsystem.room.payload.response.RoomResponse;
 import kg.alatoo.smarthousebackendsystem.room.service.RoomService;
+import kg.alatoo.smarthousebackendsystem.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,8 +29,26 @@ public class RoomController {
         return roomService.getRoomsByHome(homeId);
     }
 
+    @GetMapping("/my")
+    public List<RoomResponse> getMyRooms(
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return roomService.getRoomsByUser(currentUser.getId());
+    }
+
     @PostMapping
-    public RoomResponse createRoom(@Valid @RequestBody CreateRoomRequest request) {
-        return roomService.createRoom(request);
+    public RoomResponse createRoom(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @Valid @RequestBody CreateRoomRequest request
+    ) {
+        return roomService.createRoom(currentUser.getId(), request);
+    }
+
+    @DeleteMapping("/{roomId}")
+    public void deleteRoom(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable UUID roomId
+    ) {
+        roomService.deleteRoom(currentUser.getId(), roomId);
     }
 }

@@ -1,7 +1,10 @@
 package kg.alatoo.smarthousebackendsystem.room.service;
 
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
 import kg.alatoo.smarthousebackendsystem.home.entity.Home;
 import kg.alatoo.smarthousebackendsystem.home.repository.HomeRepository;
+import kg.alatoo.smarthousebackendsystem.layout.repository.DeviceLayoutRepository;
 import kg.alatoo.smarthousebackendsystem.room.entity.Room;
 import kg.alatoo.smarthousebackendsystem.room.mapper.RoomMapper;
 import kg.alatoo.smarthousebackendsystem.room.payload.request.CreateRoomRequest;
@@ -22,6 +25,9 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final HomeRepository homeRepository;
     private final RoomMapper roomMapper;
+    private final DeviceRepository deviceRepository;
+    private final DeviceLayoutRepository deviceLayoutRepository;
+    private final DeviceStateRepository deviceStateRepository;
 
     public List<RoomResponse> getAllRooms() {
         return roomRepository.findAll()
@@ -38,9 +44,9 @@ public class RoomService {
     }
 
     @Transactional
-    public RoomResponse createRoom(CreateRoomRequest request) {
-        Home home = homeRepository.findById(request.homeId())
-                .orElseThrow(() -> new RuntimeException("Home not found"));
+    public RoomResponse createRoom(UUID userId, CreateRoomRequest request) {
+        Home home = homeRepository.findByIdAndOwnerId(request.homeId(), userId)
+                .orElseThrow(() -> new RuntimeException("Home not found or access denied"));
 
         Room room = new Room();
         room.setName(request.name());
@@ -49,5 +55,40 @@ public class RoomService {
         Room savedRoom = roomRepository.save(room);
 
         return roomMapper.toResponse(savedRoom);
+    }
+
+    public List<RoomResponse> getRoomsByUser(UUID userId) {
+        List<Home> homes = homeRepository.findAllByOwnerId(userId);
+
+        if (homes.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> homeIds = homes.stream()
+                .map(Home::getId)
+                .toList();
+
+        List<Room> rooms = roomRepository.findAllByHomeIdIn(homeIds);
+
+        return rooms.stream()
+                .map(room -> new RoomResponse(
+                        room.getId(),
+                        room.getName(),
+                        room.getHome().getId(),
+                        room.getCreatedAt(),
+                        room.getUpdatedAt()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void deleteRoom(UUID userId, UUID roomId) {
+        Room room = roomRepository.findByIdAndHomeOwnerId(roomId, userId)
+                .orElseThrow(() -> new RuntimeException("Room not found or access denied"));
+
+        deviceStateRepository.deleteAllByDeviceRoomId(roomId);
+        deviceLayoutRepository.deleteAllByDeviceRoomId(roomId);
+        deviceRepository.deleteAllByRoomId(roomId);
+        roomRepository.delete(room);
     }
 }
