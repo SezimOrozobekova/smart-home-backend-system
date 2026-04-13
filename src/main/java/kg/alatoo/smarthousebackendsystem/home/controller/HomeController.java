@@ -5,7 +5,9 @@ import kg.alatoo.smarthousebackendsystem.home.payload.request.CreateHomeRequest;
 import kg.alatoo.smarthousebackendsystem.home.payload.response.HomeResponse;
 import kg.alatoo.smarthousebackendsystem.home.payload.response.RoomDevicesResponse;
 import kg.alatoo.smarthousebackendsystem.home.service.HomeService;
+import kg.alatoo.smarthousebackendsystem.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +20,13 @@ public class HomeController {
 
     private final HomeService homeService;
 
+    @GetMapping("/my")
+    public List<HomeResponse> getMyHomes(
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return homeService.getHomesByOwner(currentUser.getId());
+    }
+
     @GetMapping
     public List<HomeResponse> getAllHomes() {
         return homeService.getAllHomes();
@@ -29,12 +38,17 @@ public class HomeController {
     }
 
     @PostMapping
-    public HomeResponse createHome(@Valid @RequestBody CreateHomeRequest request) {
-        return homeService.createHome(request);
+    public HomeResponse createHome(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @Valid @RequestBody CreateHomeRequest request
+    ) {
+        return homeService.createHome(currentUser.getId(), request);
     }
 
-    @GetMapping("/{homeId}/devices-by-room")
-    public List<RoomDevicesResponse> getDevicesByRoom(@PathVariable UUID homeId) {
-        return homeService.getDevicesByRoom(homeId);
+    @GetMapping("/devices-by-room")
+    public List<RoomDevicesResponse> getDevicesByRoom(
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return homeService.getDevicesByRoom(currentUser.getId());
     }
 }

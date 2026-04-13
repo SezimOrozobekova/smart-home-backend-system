@@ -43,32 +43,58 @@ public class HomeService {
     }
 
     public List<HomeResponse> getHomesByOwner(UUID ownerId) {
-        return homeRepository.findAllByOwnerId(ownerId)
-                .stream()
-                .map(homeMapper::toResponse)
+
+        List<Home> homes = homeRepository.findAllByOwnerId(ownerId);
+
+        return homes.stream()
+                .map(home -> new HomeResponse(
+                        home.getId(),
+                        home.getName(),
+                        home.getAddress(),
+                        home.getOwner().getId(),
+                        home.getCreatedAt(),
+                        home.getUpdatedAt()
+                ))
                 .toList();
     }
 
     @Transactional
-    public HomeResponse createHome(CreateHomeRequest request) {
-        User owner = userRepository.findById(request.ownerId())
-                .orElseThrow(() -> new RuntimeException("Owner not found"));
+    public HomeResponse createHome(UUID ownerId, CreateHomeRequest request) {
+
+        User owner = userRepository.findById(ownerId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Home home = new Home();
         home.setName(request.name());
         home.setAddress(request.address());
         home.setOwner(owner);
 
-        Home savedHome = homeRepository.save(home);
+        Home saved = homeRepository.save(home);
 
-        return homeMapper.toResponse(savedHome);
+        return new HomeResponse(
+                saved.getId(),
+                saved.getName(),
+                saved.getAddress(),
+                saved.getOwner().getId(),
+                saved.getCreatedAt(),
+                saved.getUpdatedAt()
+        );
     }
 
-    public List<RoomDevicesResponse> getDevicesByRoom(UUID homeId) {
-        Home home = homeRepository.findById(homeId)
-                .orElseThrow(() -> new RuntimeException("Home not found"));
 
-        List<Room> rooms = roomRepository.findAllByHomeId(home.getId());
+
+    public List<RoomDevicesResponse> getDevicesByRoom(UUID userId) {
+        List<Home> homes = homeRepository.findAllByOwnerId(userId);
+
+        if (homes.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> homeIds = homes.stream()
+                .map(Home::getId)
+                .toList();
+
+        List<Room> rooms = roomRepository.findAllByHomeIdIn(homeIds);
 
         return rooms.stream()
                 .map(room -> {
@@ -132,6 +158,7 @@ public class HomeService {
                             deviceResponses
                     );
                 })
+                .filter(roomResponse -> !roomResponse.devices().isEmpty())
                 .toList();
     }
 }
