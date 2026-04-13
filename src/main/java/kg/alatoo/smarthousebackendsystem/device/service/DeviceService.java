@@ -6,6 +6,7 @@ import kg.alatoo.smarthousebackendsystem.device.entity.DeviceType;
 import kg.alatoo.smarthousebackendsystem.device.mapper.DeviceMapper;
 import kg.alatoo.smarthousebackendsystem.device.payload.request.CreateDeviceRequest;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceResponse;
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceConnectionRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceTypeRepository;
@@ -29,6 +30,7 @@ public class DeviceService {
     private final DeviceRepository deviceRepository;
     private final DeviceTypeRepository deviceTypeRepository;
     private final DeviceStateRepository deviceStateRepository;
+    private final DeviceConnectionRepository deviceConnectionRepository;
     private final DeviceLayoutRepository deviceLayoutRepository;
     private final RoomRepository roomRepository;
     private final DeviceMapper deviceMapper;
@@ -79,6 +81,7 @@ public class DeviceService {
         state.setPowerWatts(BigDecimal.ZERO);
         state.setPeakCapacityWatts(BigDecimal.ZERO);
         state.setLastSeenAt(Instant.now());
+
         deviceStateRepository.save(state);
 
         return deviceMapper.toResponse(savedDevice);
@@ -89,6 +92,7 @@ public class DeviceService {
         Device device = deviceRepository.findByIdAndRoomHomeOwnerId(deviceId, userId)
                 .orElseThrow(() -> new RuntimeException("Device not found or access denied"));
 
+        deviceConnectionRepository.deleteByDeviceId(deviceId);
         deviceStateRepository.deleteByDeviceId(deviceId);
         deviceLayoutRepository.deleteByDeviceId(deviceId);
         deviceRepository.delete(device);

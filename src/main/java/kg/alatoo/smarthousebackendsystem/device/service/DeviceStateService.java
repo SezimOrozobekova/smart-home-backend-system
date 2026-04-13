@@ -2,15 +2,22 @@ package kg.alatoo.smarthousebackendsystem.device.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kg.alatoo.smarthousebackendsystem.device.entity.DeviceConnection;
+import kg.alatoo.smarthousebackendsystem.device.entity.DeviceConnectionType;
+import kg.alatoo.smarthousebackendsystem.device.entity.DeviceProvider;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceState;
 import kg.alatoo.smarthousebackendsystem.device.mapper.DeviceStateMapper;
 import kg.alatoo.smarthousebackendsystem.device.payload.request.UpdateDeviceStateRequest;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceStateResponse;
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceConnectionRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -19,7 +26,9 @@ import java.util.UUID;
 public class DeviceStateService {
 
     private final DeviceStateRepository deviceStateRepository;
+    private final DeviceConnectionRepository deviceConnectionRepository;
     private final DeviceStateMapper deviceStateMapper;
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     public DeviceStateResponse getByDeviceId(UUID deviceId) {
@@ -31,7 +40,6 @@ public class DeviceStateService {
 
     @Transactional
     public DeviceStateResponse updateByDeviceId(UUID deviceId, UpdateDeviceStateRequest request) {
-
         DeviceState state = deviceStateRepository.findByDeviceId(deviceId)
                 .orElseThrow(() -> new RuntimeException("Device state not found"));
 
@@ -56,16 +64,10 @@ public class DeviceStateService {
         }
 
         if (request.rawState() != null) {
-            try {
-                JsonNode node = objectMapper.readTree(request.rawState());
-                state.setRawState(node);
-            } catch (Exception e) {
-                throw new RuntimeException("Invalid JSON in rawState", e);
-            }
+            state.setRawState(request.rawState());
         }
 
         DeviceState saved = deviceStateRepository.save(state);
-
         return deviceStateMapper.toResponse(saved);
     }
 
@@ -74,41 +76,74 @@ public class DeviceStateService {
         DeviceState state = deviceStateRepository.findByDeviceId(deviceId)
                 .orElseThrow(() -> new RuntimeException("Device state not found"));
 
-        boolean newIsOn = !Boolean.TRUE.equals(state.getIsOn());
-        state.setIsOn(newIsOn);
+        DeviceConnection connection = deviceConnectionRepository.findByDeviceId(deviceId)
+                .orElseThrow(() -> new RuntimeException("Device connection not found"));
 
-        if (newIsOn) {
-            state.setPowerWatts(
-                    state.getPeakCapacityWatts() != null
-                            ? state.getPeakCapacityWatts()
-                            : java.math.BigDecimal.ZERO
-            );
+        validateShellyLocalHttp(connection);
+
+        boolean nextOn = !Boolean.TRUE.equals(state.getIsOn());
+
+        try {
+            String switchUrl = buildSwitchUrl(connection, nextOn);
+            restTemplate.getForObject(switchUrl, String.class);
+
+            String statusUrl = buildStatusUrl(connection);
+            String response = restTemplate.getForObject(statusUrl, String.class);
+
+            JsonNode json = objectMapper.readTree(response);
+            JsonNode switchNode = json.path("switch:0");
+
+            boolean isOn = switchNode.path("output").asBoolean(false);
+            double apower = switchNode.path("apower").asDouble(0.0);
+
+            state.setIsOn(isOn);
             state.setIsOnline(true);
-        } else {
-            state.setPowerWatts(java.math.BigDecimal.ZERO);
+            state.setPowerWatts(BigDecimal.valueOf(apower));
+            state.setLastSeenAt(Instant.now());
+            state.setRawState(json);
+
+            DeviceState saved = deviceStateRepository.save(state);
+            return deviceStateMapper.toResponse(saved);
+
+        } catch (Exception e) {
+            state.setIsOnline(false);
+            state.setLastSeenAt(Instant.now());
+            deviceStateRepository.save(state);
+
+            throw new RuntimeException("Failed to toggle live device", e);
+        }
+    }
+
+    private void validateShellyLocalHttp(DeviceConnection connection) {
+        if (!Boolean.TRUE.equals(connection.getIsEnabled())) {
+            throw new RuntimeException("Device connection is disabled");
         }
 
-        state.setLastSeenAt(java.time.Instant.now());
-
-        if (state.getRawState() != null) {
-            try {
-                com.fasterxml.jackson.databind.node.ObjectNode raw =
-                        state.getRawState().isObject()
-                                ? (com.fasterxml.jackson.databind.node.ObjectNode) state.getRawState()
-                                : objectMapper.createObjectNode();
-
-                raw.put("isOn", state.getIsOn());
-                raw.put("isOnline", state.getIsOnline());
-                raw.put("powerWatts", state.getPowerWatts() != null ? state.getPowerWatts().doubleValue() : 0);
-                raw.put("toggledAt", java.time.Instant.now().toString());
-
-                state.setRawState(raw);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to update rawState", e);
-            }
+        if (connection.getProvider() != DeviceProvider.SHELLY) {
+            throw new RuntimeException("Only SHELLY provider is supported for now");
         }
 
-        DeviceState saved = deviceStateRepository.save(state);
-        return deviceStateMapper.toResponse(saved);
+        if (connection.getConnectionType() != DeviceConnectionType.LOCAL_HTTP) {
+            throw new RuntimeException("Only LOCAL_HTTP connection is supported for now");
+        }
+
+        if (connection.getIpAddress() == null || connection.getIpAddress().isBlank()) {
+            throw new RuntimeException("Device IP is not configured");
+        }
+    }
+
+    private String buildStatusUrl(DeviceConnection connection) {
+        String baseUrl = buildBaseUrl(connection);
+        return baseUrl + "/rpc/Shelly.GetStatus";
+    }
+
+    private String buildSwitchUrl(DeviceConnection connection, boolean turnOn) {
+        String baseUrl = buildBaseUrl(connection);
+        return baseUrl + "/rpc/Switch.Set?id=0&on=" + turnOn;
+    }
+
+    private String buildBaseUrl(DeviceConnection connection) {
+        int port = connection.getPort() != null ? connection.getPort() : 80;
+        return "http://" + connection.getIpAddress() + ":" + port;
     }
 }
