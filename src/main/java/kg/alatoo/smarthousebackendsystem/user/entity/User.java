@@ -47,7 +47,7 @@ public class User {
     @Column(name = "telegram_chat_id")
     private Long telegramChatId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 }

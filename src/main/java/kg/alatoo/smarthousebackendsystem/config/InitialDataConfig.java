@@ -45,9 +45,9 @@ public class InitialDataConfig {
             DeviceStateRepository deviceStateRepository
     ) {
         return args -> {
-            Role rootRole = saveRole(roleRepository, "ROOT_ADMIN");
-            Role adminRole = saveRole(roleRepository, "ADMIN");
-            Role userRole = saveRole(roleRepository, "USER");
+            Role rootRole = saveRole(roleRepository, "ROLE_ROOT_ADMIN");
+            Role adminRole = saveRole(roleRepository, "ROLE_ADMIN");
+            Role userRole = saveRole(roleRepository, "ROLE_USER");
 
             User root = saveUser(
                     userRepository,
