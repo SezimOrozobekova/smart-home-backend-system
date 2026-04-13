@@ -1,7 +1,7 @@
 package kg.alatoo.smarthousebackendsystem.user.mapper;
 
 import kg.alatoo.smarthousebackendsystem.user.entity.User;
-import kg.alatoo.smarthousebackendsystem.user.payload.UserResponse;
+import kg.alatoo.smarthousebackendsystem.user.payload.response.UserResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

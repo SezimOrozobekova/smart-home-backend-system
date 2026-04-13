@@ -1,8 +1,7 @@
 package kg.alatoo.smarthousebackendsystem.user.service;
 
-import kg.alatoo.smarthousebackendsystem.user.entity.User;
 import kg.alatoo.smarthousebackendsystem.user.mapper.UserMapper;
-import kg.alatoo.smarthousebackendsystem.user.payload.UserResponse;
+import kg.alatoo.smarthousebackendsystem.user.payload.response.UserResponse;
 import kg.alatoo.smarthousebackendsystem.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

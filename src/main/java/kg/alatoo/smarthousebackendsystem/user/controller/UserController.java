@@ -1,6 +1,6 @@
 package kg.alatoo.smarthousebackendsystem.user.controller;
 
-import kg.alatoo.smarthousebackendsystem.user.payload.UserResponse;
+import kg.alatoo.smarthousebackendsystem.user.payload.response.UserResponse;
 import kg.alatoo.smarthousebackendsystem.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

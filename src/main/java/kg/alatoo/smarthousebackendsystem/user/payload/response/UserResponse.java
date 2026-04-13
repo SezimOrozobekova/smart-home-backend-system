@@ -1,4 +1,4 @@
-package kg.alatoo.smarthousebackendsystem.user.payload;
+package kg.alatoo.smarthousebackendsystem.user.payload.response;
 
 import kg.alatoo.smarthousebackendsystem.user.entity.UserStatus;
 
