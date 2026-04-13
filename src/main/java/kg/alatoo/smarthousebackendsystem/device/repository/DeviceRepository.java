@@ -10,4 +10,8 @@ import java.util.UUID;
 public interface DeviceRepository extends JpaRepository<Device, UUID> {
     List<Device> findAllByRoomId(UUID roomId);
     Optional<Device> findByExternalId(String externalId);
+    void deleteAllByRoomId(UUID roomId);
+    List<Device> findAllByRoomHomeOwnerId(UUID userId);
+    Optional<Device> findByIdAndRoomHomeOwnerId(UUID deviceId, UUID userId);
+
 }

@@ -4,7 +4,9 @@ import jakarta.validation.Valid;
 import kg.alatoo.smarthousebackendsystem.device.payload.request.CreateDeviceRequest;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceResponse;
 import kg.alatoo.smarthousebackendsystem.device.service.DeviceService;
+import kg.alatoo.smarthousebackendsystem.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,8 +29,23 @@ public class DeviceController {
         return deviceService.getAllByRoom(roomId);
     }
 
+    @GetMapping("/my")
+    public List<DeviceResponse> getMyDevices(
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return deviceService.getMyDevices(currentUser.getId());
+    }
+
     @PostMapping
     public DeviceResponse create(@Valid @RequestBody CreateDeviceRequest request) {
         return deviceService.create(request);
+    }
+
+    @DeleteMapping("/{deviceId}")
+    public void deleteDevice(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PathVariable UUID deviceId
+    ) {
+        deviceService.deleteDevice(currentUser.getId(), deviceId);
     }
 }

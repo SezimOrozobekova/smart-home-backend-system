@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record DeviceResponse(
         UUID id,
-        UUID roomId,
+        String roomName,
         UUID deviceTypeId,
         String deviceTypeCode,
         String deviceTypeName,

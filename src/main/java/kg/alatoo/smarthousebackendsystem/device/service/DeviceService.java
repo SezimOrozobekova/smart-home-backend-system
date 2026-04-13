@@ -9,12 +9,15 @@ import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceResponse;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceTypeRepository;
+import kg.alatoo.smarthousebackendsystem.layout.repository.DeviceLayoutRepository;
 import kg.alatoo.smarthousebackendsystem.room.entity.Room;
 import kg.alatoo.smarthousebackendsystem.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,11 +29,19 @@ public class DeviceService {
     private final DeviceRepository deviceRepository;
     private final DeviceTypeRepository deviceTypeRepository;
     private final DeviceStateRepository deviceStateRepository;
+    private final DeviceLayoutRepository deviceLayoutRepository;
     private final RoomRepository roomRepository;
     private final DeviceMapper deviceMapper;
 
     public List<DeviceResponse> getAllByRoom(UUID roomId) {
         return deviceRepository.findAllByRoomId(roomId)
+                .stream()
+                .map(deviceMapper::toResponse)
+                .toList();
+    }
+
+    public List<DeviceResponse> getMyDevices(UUID userId) {
+        return deviceRepository.findAllByRoomHomeOwnerId(userId)
                 .stream()
                 .map(deviceMapper::toResponse)
                 .toList();
@@ -65,8 +76,21 @@ public class DeviceService {
         state.setDevice(savedDevice);
         state.setIsOnline(false);
         state.setIsOn(false);
+        state.setPowerWatts(BigDecimal.ZERO);
+        state.setPeakCapacityWatts(BigDecimal.ZERO);
+        state.setLastSeenAt(Instant.now());
         deviceStateRepository.save(state);
 
         return deviceMapper.toResponse(savedDevice);
+    }
+
+    @Transactional
+    public void deleteDevice(UUID userId, UUID deviceId) {
+        Device device = deviceRepository.findByIdAndRoomHomeOwnerId(deviceId, userId)
+                .orElseThrow(() -> new RuntimeException("Device not found or access denied"));
+
+        deviceStateRepository.deleteByDeviceId(deviceId);
+        deviceLayoutRepository.deleteByDeviceId(deviceId);
+        deviceRepository.delete(device);
     }
 }
