@@ -2,6 +2,7 @@ package kg.alatoo.smarthousebackendsystem.home.service;
 
 import kg.alatoo.smarthousebackendsystem.device.entity.Device;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceState;
+import kg.alatoo.smarthousebackendsystem.device.mapper.DeviceMapper;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
 import kg.alatoo.smarthousebackendsystem.home.entity.Home;
@@ -31,6 +32,7 @@ public class HomeService {
     private final HomeRepository homeRepository;
     private final UserRepository userRepository;
     private final HomeMapper homeMapper;
+    private final DeviceMapper deviceMapper;
     private final RoomRepository roomRepository;
     private final DeviceRepository deviceRepository;
     private final DeviceStateRepository deviceStateRepository;
@@ -43,45 +45,25 @@ public class HomeService {
     }
 
     public List<HomeResponse> getHomesByOwner(UUID ownerId) {
-
         List<Home> homes = homeRepository.findAllByOwnerId(ownerId);
 
         return homes.stream()
-                .map(home -> new HomeResponse(
-                        home.getId(),
-                        home.getName(),
-                        home.getAddress(),
-                        home.getOwner().getId(),
-                        home.getCreatedAt(),
-                        home.getUpdatedAt()
-                ))
+                .map(homeMapper::toResponse)
                 .toList();
     }
 
     @Transactional
     public HomeResponse createHome(UUID ownerId, CreateHomeRequest request) {
-
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Home home = new Home();
-        home.setName(request.name());
-        home.setAddress(request.address());
+        Home home = homeMapper.toEntity(request);
         home.setOwner(owner);
 
         Home saved = homeRepository.save(home);
 
-        return new HomeResponse(
-                saved.getId(),
-                saved.getName(),
-                saved.getAddress(),
-                saved.getOwner().getId(),
-                saved.getCreatedAt(),
-                saved.getUpdatedAt()
-        );
+        return homeMapper.toResponse(saved);
     }
-
-
 
     public List<RoomDevicesResponse> getDevicesByRoom(UUID userId) {
         List<Home> homes = homeRepository.findAllByOwnerId(userId);
@@ -127,10 +109,8 @@ public class HomeService {
                                             : state.getRecordedAt();
                                 }
 
-                                return new DeviceItemResponse(
-                                        device.getId(),
-                                        device.getName(),
-                                        device.getDeviceType() != null ? device.getDeviceType().getName() : null,
+                                return deviceMapper.toResponse(
+                                        device,
                                         room.getName(),
                                         power,
                                         basePower,
@@ -147,7 +127,7 @@ public class HomeService {
 
                     int totalPower = deviceResponses.stream()
                             .map(DeviceItemResponse::power)
-                            .filter(power -> power != null)
+                            .filter(powerValue -> powerValue != null)
                             .reduce(0, Integer::sum);
 
                     return new RoomDevicesResponse(

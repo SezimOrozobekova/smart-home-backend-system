@@ -11,10 +11,18 @@ public record DeviceConnectionResponse(
         UUID deviceId,
         DeviceProvider provider,
         DeviceConnectionType connectionType,
+
         String ipAddress,
         Integer port,
         String username,
         String externalId,
+
+        String mqttBrokerHost,
+        Integer mqttBrokerPort,
+        String mqttUsername,
+        String mqttTopicPrefix,
+        Boolean mqttUseTls,
+
         Boolean isEnabled,
         Instant createdAt,
         Instant updatedAt

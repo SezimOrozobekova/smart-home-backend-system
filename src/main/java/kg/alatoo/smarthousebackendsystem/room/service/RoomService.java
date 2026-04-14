@@ -48,8 +48,7 @@ public class RoomService {
         Home home = homeRepository.findByIdAndOwnerId(request.homeId(), userId)
                 .orElseThrow(() -> new RuntimeException("Home not found or access denied"));
 
-        Room room = new Room();
-        room.setName(request.name());
+        Room room = roomMapper.toEntity(request);
         room.setHome(home);
 
         Room savedRoom = roomRepository.save(room);
@@ -71,13 +70,7 @@ public class RoomService {
         List<Room> rooms = roomRepository.findAllByHomeIdIn(homeIds);
 
         return rooms.stream()
-                .map(room -> new RoomResponse(
-                        room.getId(),
-                        room.getName(),
-                        room.getHome().getId(),
-                        room.getCreatedAt(),
-                        room.getUpdatedAt()
-                ))
+                .map(roomMapper::toResponse)
                 .toList();
     }
 

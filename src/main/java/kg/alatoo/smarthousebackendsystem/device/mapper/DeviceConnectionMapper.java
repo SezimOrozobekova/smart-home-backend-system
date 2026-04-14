@@ -13,10 +13,18 @@ public class DeviceConnectionMapper {
                 connection.getDevice().getId(),
                 connection.getProvider(),
                 connection.getConnectionType(),
+
                 connection.getIpAddress(),
                 connection.getPort(),
                 connection.getUsername(),
                 connection.getExternalId(),
+
+                connection.getMqttBrokerHost(),
+                connection.getMqttBrokerPort(),
+                connection.getMqttUsername(),
+                connection.getMqttTopicPrefix(),
+                connection.getMqttUseTls(),
+
                 connection.getIsEnabled(),
                 connection.getCreatedAt(),
                 connection.getUpdatedAt()

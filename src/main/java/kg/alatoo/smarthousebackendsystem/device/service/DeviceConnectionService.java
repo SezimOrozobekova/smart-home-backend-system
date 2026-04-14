@@ -41,11 +41,20 @@ public class DeviceConnectionService {
         connection.setDevice(device);
         connection.setProvider(request.provider());
         connection.setConnectionType(request.connectionType());
+
         connection.setIpAddress(request.ipAddress());
         connection.setPort(request.port() != null ? request.port() : 80);
         connection.setUsername(request.username());
         connection.setPassword(request.password());
         connection.setExternalId(request.externalId());
+
+        connection.setMqttBrokerHost(request.mqttBrokerHost());
+        connection.setMqttBrokerPort(request.mqttBrokerPort());
+        connection.setMqttUsername(request.mqttUsername());
+        connection.setMqttPassword(request.mqttPassword());
+        connection.setMqttTopicPrefix(request.mqttTopicPrefix());
+        connection.setMqttUseTls(request.mqttUseTls() != null ? request.mqttUseTls() : false);
+
         connection.setIsEnabled(request.isEnabled() != null ? request.isEnabled() : true);
 
         DeviceConnection saved = deviceConnectionRepository.save(connection);

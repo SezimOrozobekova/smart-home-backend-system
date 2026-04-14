@@ -31,20 +31,42 @@ public class DeviceConnection {
     @Column(name = "connection_type", nullable = false, length = 50)
     private DeviceConnectionType connectionType;
 
+    // LOCAL_HTTP
     @Column(name = "ip_address")
     private String ipAddress;
 
     @Column(name = "port")
     private Integer port;
 
+    // optional auth
     @Column(name = "username")
     private String username;
 
     @Column(name = "password")
     private String password;
 
+    // universal external identifier
     @Column(name = "external_id")
     private String externalId;
+
+    // MQTT
+    @Column(name = "mqtt_broker_host")
+    private String mqttBrokerHost;
+
+    @Column(name = "mqtt_broker_port")
+    private Integer mqttBrokerPort;
+
+    @Column(name = "mqtt_username")
+    private String mqttUsername;
+
+    @Column(name = "mqtt_password")
+    private String mqttPassword;
+
+    @Column(name = "mqtt_topic_prefix")
+    private String mqttTopicPrefix;
+
+    @Column(name = "mqtt_use_tls")
+    private Boolean mqttUseTls;
 
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled = true;

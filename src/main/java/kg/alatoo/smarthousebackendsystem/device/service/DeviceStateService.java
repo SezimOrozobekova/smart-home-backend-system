@@ -30,6 +30,7 @@ public class DeviceStateService {
     private final DeviceStateMapper deviceStateMapper;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final MqttService mqttService;
 
     public DeviceStateResponse getByDeviceId(UUID deviceId) {
         DeviceState state = deviceStateRepository.findByDeviceId(deviceId)
@@ -79,9 +80,41 @@ public class DeviceStateService {
         DeviceConnection connection = deviceConnectionRepository.findByDeviceId(deviceId)
                 .orElseThrow(() -> new RuntimeException("Device connection not found"));
 
-        validateShellyLocalHttp(connection);
-
         boolean nextOn = !Boolean.TRUE.equals(state.getIsOn());
+
+        return switch (connection.getConnectionType()) {
+            case MQTT -> toggleViaMqtt(state, connection, nextOn);
+            case LOCAL_HTTP -> toggleViaHttp(state, connection, nextOn);
+            default -> throw new RuntimeException("Unsupported connection type");
+        };
+    }
+
+    private DeviceStateResponse toggleViaMqtt(
+            DeviceState state,
+            DeviceConnection connection,
+            boolean nextOn
+    ) {
+        validateShellyMqtt(connection);
+
+        String topic = connection.getMqttTopicPrefix() + "/rpc";
+        String payload = buildShellyTogglePayload(nextOn);
+
+        mqttService.publish(topic, payload);
+
+        state.setIsOn(nextOn);
+        state.setIsOnline(true);
+        state.setLastSeenAt(Instant.now());
+
+        DeviceState saved = deviceStateRepository.save(state);
+        return deviceStateMapper.toResponse(saved);
+    }
+
+    private DeviceStateResponse toggleViaHttp(
+            DeviceState state,
+            DeviceConnection connection,
+            boolean nextOn
+    ) {
+        validateShellyLocalHttp(connection);
 
         try {
             String switchUrl = buildSwitchUrl(connection, nextOn);
@@ -124,7 +157,7 @@ public class DeviceStateService {
         }
 
         if (connection.getConnectionType() != DeviceConnectionType.LOCAL_HTTP) {
-            throw new RuntimeException("Only LOCAL_HTTP connection is supported for now");
+            throw new RuntimeException("Only LOCAL_HTTP connection is supported here");
         }
 
         if (connection.getIpAddress() == null || connection.getIpAddress().isBlank()) {
@@ -132,14 +165,44 @@ public class DeviceStateService {
         }
     }
 
+    private void validateShellyMqtt(DeviceConnection connection) {
+        if (!Boolean.TRUE.equals(connection.getIsEnabled())) {
+            throw new RuntimeException("Device connection is disabled");
+        }
+
+        if (connection.getProvider() != DeviceProvider.SHELLY) {
+            throw new RuntimeException("Only SHELLY provider is supported for now");
+        }
+
+        if (connection.getConnectionType() != DeviceConnectionType.MQTT) {
+            throw new RuntimeException("Only MQTT connection is supported here");
+        }
+
+        if (connection.getMqttTopicPrefix() == null || connection.getMqttTopicPrefix().isBlank()) {
+            throw new RuntimeException("MQTT topic prefix is not configured");
+        }
+    }
+
+    private String buildShellyTogglePayload(boolean on) {
+        return """
+        {
+          "id": 1,
+          "src": "backend",
+          "method": "Switch.Set",
+          "params": {
+            "id": 0,
+            "on": %s
+          }
+        }
+        """.formatted(on);
+    }
+
     private String buildStatusUrl(DeviceConnection connection) {
-        String baseUrl = buildBaseUrl(connection);
-        return baseUrl + "/rpc/Shelly.GetStatus";
+        return buildBaseUrl(connection) + "/rpc/Shelly.GetStatus";
     }
 
     private String buildSwitchUrl(DeviceConnection connection, boolean turnOn) {
-        String baseUrl = buildBaseUrl(connection);
-        return baseUrl + "/rpc/Switch.Set?id=0&on=" + turnOn;
+        return buildBaseUrl(connection) + "/rpc/Switch.Set?id=0&on=" + turnOn;
     }
 
     private String buildBaseUrl(DeviceConnection connection) {
