@@ -1,0 +1,8 @@
+target
+.idea
+.git
+.gitignore
+HELP.md
+*.iml
+mosquitto
+docker-compose.yml
