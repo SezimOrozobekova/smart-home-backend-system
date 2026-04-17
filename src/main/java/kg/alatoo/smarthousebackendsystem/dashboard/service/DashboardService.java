@@ -1,81 +1,97 @@
 package kg.alatoo.smarthousebackendsystem.dashboard.service;
 
+import kg.alatoo.smarthousebackendsystem.dashboard.payload.response.DashboardEnergySummary;
 import kg.alatoo.smarthousebackendsystem.dashboard.payload.response.DashboardSummaryResponse;
-import kg.alatoo.smarthousebackendsystem.device.entity.Device;
-import kg.alatoo.smarthousebackendsystem.device.payload.response.MonthlyEnergyResponse;
+import kg.alatoo.smarthousebackendsystem.device.repository.DeviceEnergyHistoryRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
-import kg.alatoo.smarthousebackendsystem.device.service.DeviceEnergyService;
 import kg.alatoo.smarthousebackendsystem.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
 
-    private static final BigDecimal PRICE_PER_KWH = new BigDecimal("0.15");
+    private static final BigDecimal PRICE_PER_KWH = new BigDecimal("0.10");
+    private static final BigDecimal WH_IN_KWH = new BigDecimal("1000");
 
     private final DeviceRepository deviceRepository;
     private final DeviceStateRepository deviceStateRepository;
     private final RoomRepository roomRepository;
-    private final DeviceEnergyService deviceEnergyService;
+    private final DeviceEnergyHistoryRepository deviceEnergyHistoryRepository;
 
     public DashboardSummaryResponse getSummary(UUID userId) {
-
-        // 1. Простая статистика
         long devicesConnected = deviceRepository.countByRoomHomeOwnerId(userId);
         long activeDevices = deviceStateRepository.countByDeviceRoomHomeOwnerIdAndIsOnTrue(userId);
         long roomsMonitored = roomRepository.countByHomeOwnerId(userId);
 
-        // 2. Берём все устройства пользователя
-        List<Device> devices = deviceRepository.findAllByRoomHomeOwnerId(userId);
-
-        YearMonth currentMonth = YearMonth.now();
-        YearMonth previousMonth = currentMonth.minusMonths(1);
-        ZoneId zone = ZoneId.systemDefault();
-
-        BigDecimal currentTotalKwh = BigDecimal.ZERO;
-        BigDecimal previousTotalKwh = BigDecimal.ZERO;
-
-        // 3. Считаем потребление
-        for (Device device : devices) {
-
-            // текущий месяц
-            try {
-                MonthlyEnergyResponse current =
-                        deviceEnergyService.getMonthlyConsumption(device.getId(), currentMonth, zone);
-
-                currentTotalKwh = currentTotalKwh.add(current.consumedKwh());
-            } catch (Exception ignored) {}
-
-            // прошлый месяц
-            try {
-                MonthlyEnergyResponse previous =
-                        deviceEnergyService.getMonthlyConsumption(device.getId(), previousMonth, zone);
-
-                previousTotalKwh = previousTotalKwh.add(previous.consumedKwh());
-            } catch (Exception ignored) {}
-        }
-
-        // 4. Переводим в деньги
-        BigDecimal currentCost = currentTotalKwh.multiply(PRICE_PER_KWH);
-        BigDecimal previousCost = previousTotalKwh.multiply(PRICE_PER_KWH);
+        DashboardEnergySummary energySummary = getCachedEnergySummary(userId);
 
         return DashboardSummaryResponse.builder()
                 .devicesConnected(devicesConnected)
                 .activeDevices(activeDevices)
                 .roomsMonitored(roomsMonitored)
-                .estimatedMonthlyCost(currentCost.doubleValue())
-                .costDifferenceFromLastMonth(
-                        currentCost.subtract(previousCost).doubleValue()
-                )
+                .estimatedMonthlyCost(energySummary.getEstimatedMonthlyCost())
+                .costDifferenceFromLastMonth(energySummary.getCostDifferenceFromLastMonth())
                 .build();
+    }
+
+    @Cacheable(value = "dashboardEnergy", key = "#userId")
+    public DashboardEnergySummary getCachedEnergySummary(UUID userId) {
+        ZoneId zoneId = ZoneId.systemDefault();
+
+        YearMonth currentMonth = YearMonth.now(zoneId);
+        YearMonth previousMonth = currentMonth.minusMonths(1);
+
+        Instant currentFrom = currentMonth.atDay(1).atStartOfDay(zoneId).toInstant();
+        Instant currentTo = currentMonth.plusMonths(1)
+                .atDay(1)
+                .atStartOfDay(zoneId)
+                .minusNanos(1)
+                .toInstant();
+
+        Instant previousFrom = previousMonth.atDay(1).atStartOfDay(zoneId).toInstant();
+        Instant previousTo = previousMonth.plusMonths(1)
+                .atDay(1)
+                .atStartOfDay(zoneId)
+                .minusNanos(1)
+                .toInstant();
+
+        BigDecimal currentConsumedWh = deviceEnergyHistoryRepository
+                .calculateMonthlyConsumptionWhByUserId(userId, currentFrom, currentTo);
+
+        BigDecimal previousConsumedWh = deviceEnergyHistoryRepository
+                .calculateMonthlyConsumptionWhByUserId(userId, previousFrom, previousTo);
+
+        if (currentConsumedWh == null) {
+            currentConsumedWh = BigDecimal.ZERO;
+        }
+        if (previousConsumedWh == null) {
+            previousConsumedWh = BigDecimal.ZERO;
+        }
+
+        BigDecimal currentCost = currentConsumedWh
+                .divide(WH_IN_KWH, 6, RoundingMode.HALF_UP)
+                .multiply(PRICE_PER_KWH)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal previousCost = previousConsumedWh
+                .divide(WH_IN_KWH, 6, RoundingMode.HALF_UP)
+                .multiply(PRICE_PER_KWH)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        return new DashboardEnergySummary(
+                currentCost.doubleValue(),
+                currentCost.subtract(previousCost).doubleValue()
+        );
     }
 }
