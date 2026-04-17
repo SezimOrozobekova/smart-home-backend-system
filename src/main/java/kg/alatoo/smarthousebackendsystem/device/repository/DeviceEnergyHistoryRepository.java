@@ -2,7 +2,6 @@ package kg.alatoo.smarthousebackendsystem.device.repository;
 
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceEnergyHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,11 +26,15 @@ public interface DeviceEnergyHistoryRepository extends JpaRepository<DeviceEnerg
             Instant to
     );
 
-    @Query("""
-        select h from DeviceEnergyHistory h
-        where h.device.id = :deviceId
-        order by h.recordedAt desc
-        limit 1
-    """)
-    Optional<DeviceEnergyHistory> findLatestByDeviceId(UUID deviceId);
+    Optional<DeviceEnergyHistory> findFirstByDeviceIdOrderByRecordedAtDesc(UUID deviceId);
+
+    Optional<DeviceEnergyHistory> findFirstByDeviceRoomHomeOwnerIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(
+            UUID userId,
+            Instant from
+    );
+
+    Optional<DeviceEnergyHistory> findFirstByDeviceRoomHomeOwnerIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+            UUID userId,
+            Instant to
+    );
 }

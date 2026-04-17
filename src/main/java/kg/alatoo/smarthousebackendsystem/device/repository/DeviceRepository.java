@@ -13,5 +13,5 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     void deleteAllByRoomId(UUID roomId);
     List<Device> findAllByRoomHomeOwnerId(UUID userId);
     Optional<Device> findByIdAndRoomHomeOwnerId(UUID deviceId, UUID userId);
-
+    long countByRoomHomeOwnerId(UUID userId);
 }

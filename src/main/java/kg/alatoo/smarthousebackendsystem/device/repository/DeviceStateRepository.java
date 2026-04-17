@@ -26,4 +26,6 @@ public interface DeviceStateRepository extends JpaRepository<DeviceState, UUID> 
         where ds.device.id = :deviceId
     """)
     void deleteByDeviceId(@Param("deviceId") UUID deviceId);
+
+    long countByDeviceRoomHomeOwnerIdAndIsOnTrue(UUID userId);
 }
