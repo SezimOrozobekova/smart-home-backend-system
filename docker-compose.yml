@@ -20,12 +20,19 @@ services:
     restart: always
     depends_on:
       - postgres
+      - mqtt
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smarthouse
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       APP_CORS_ALLOWED_ORIGIN: http://54.174.180.189
       APP_JWT_SECRET: mysupersecurejwtsecretkey12345678901234567890
+
+      MQTT_ENABLED: "true"
+      MQTT_BROKER_URL: tcp://mqtt:1883
+      MQTT_CLIENT_ID: smarthouse-backend
+      MQTT_USERNAME: admin
+      MQTT_PASSWORD: admin123
 
   frontend:
     image: shevchenko04/smarthome-frontend:latest
@@ -36,5 +43,28 @@ services:
     ports:
       - "80:80"
 
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: smarthouse-mqtt
+    restart: always
+    ports:
+      - "1883:1883"
+    environment:
+      MQTT_USERNAME: admin
+      MQTT_PASSWORD: admin123
+    volumes:
+      - ./mosquitto/config/mosquitto.prod.conf:/mosquitto/config/mosquitto.conf
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    command: >
+      sh -c "
+        if [ ! -f /mosquitto/data/passwordfile ]; then
+          mosquitto_passwd -b -c /mosquitto/data/passwordfile $$MQTT_USERNAME $$MQTT_PASSWORD;
+        fi &&
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
+      "
+
 volumes:
   smarthouse_pgdata:
+  mqtt_data:
+  mqtt_log:

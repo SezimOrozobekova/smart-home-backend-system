@@ -4,12 +4,8 @@ import jakarta.validation.constraints.NotNull;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceConnectionType;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceProvider;
 
-public record UpsertDeviceConnectionRequest(
+public record BindInitRequest(
         @NotNull DeviceProvider provider,
-        @NotNull DeviceConnectionType connectionType,
-        String externalDeviceId,
-        String configJson,
-        String credentialsJson,
-        Boolean isEnabled
+        @NotNull DeviceConnectionType connectionType
 ) {
 }

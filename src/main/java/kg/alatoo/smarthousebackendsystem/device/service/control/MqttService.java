@@ -1,4 +1,4 @@
-package kg.alatoo.smarthousebackendsystem.device.service;
+package kg.alatoo.smarthousebackendsystem.device.service.control;
 
 import jakarta.annotation.PreDestroy;
 import kg.alatoo.smarthousebackendsystem.config.MqttProperties;

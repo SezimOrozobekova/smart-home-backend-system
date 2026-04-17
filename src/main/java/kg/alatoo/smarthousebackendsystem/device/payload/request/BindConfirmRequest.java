@@ -1,15 +1,13 @@
 package kg.alatoo.smarthousebackendsystem.device.payload.request;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceConnectionType;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceProvider;
 
-public record UpsertDeviceConnectionRequest(
+public record BindConfirmRequest(
         @NotNull DeviceProvider provider,
         @NotNull DeviceConnectionType connectionType,
-        String externalDeviceId,
-        String configJson,
-        String credentialsJson,
-        Boolean isEnabled
+        @NotBlank String externalDeviceId
 ) {
 }

@@ -3,6 +3,7 @@ package kg.alatoo.smarthousebackendsystem.device.controller;
 import kg.alatoo.smarthousebackendsystem.device.payload.request.UpdateDeviceStateRequest;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceStateResponse;
 import kg.alatoo.smarthousebackendsystem.device.service.DeviceStateService;
+import kg.alatoo.smarthousebackendsystem.device.service.control.DeviceControlService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +15,7 @@ import java.util.UUID;
 public class DeviceStateController {
 
     private final DeviceStateService deviceStateService;
+    private final DeviceControlService deviceControlService;
 
     @GetMapping("/device/{deviceId}")
     public DeviceStateResponse getByDeviceId(@PathVariable UUID deviceId) {
@@ -30,6 +32,6 @@ public class DeviceStateController {
 
     @PostMapping("/{deviceId}/toggle")
     public DeviceStateResponse toggleDevice(@PathVariable UUID deviceId) {
-        return deviceStateService.toggleDevice(deviceId);
+        return deviceControlService.toggleDevice(deviceId);
     }
 }
