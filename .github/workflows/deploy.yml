@@ -29,6 +29,20 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
           script: |
+            set -e
             cd ~/smarthome
+
+            echo "🛑 Stop backend"
+            docker compose stop backend || true
+
+            echo "🗑 Remove backend container"
+            docker compose rm -f backend || true
+
+            echo "🧹 Remove old backend image"
+            docker image rm shevchenko04/smarthome-backend:latest || true
+
+            echo "⬇️ Pull new image"
             docker compose pull backend
+
+            echo "🚀 Start backend"
             docker compose up -d backend
