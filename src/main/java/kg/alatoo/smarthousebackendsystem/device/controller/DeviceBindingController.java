@@ -5,7 +5,7 @@ import kg.alatoo.smarthousebackendsystem.device.payload.request.BindConfirmReque
 import kg.alatoo.smarthousebackendsystem.device.payload.request.BindInitRequest;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.BindInitResponse;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceConnectionResponse;
-import kg.alatoo.smarthousebackendsystem.device.service.DeviceBindingService;
+import kg.alatoo.smarthousebackendsystem.device.service.control.DeviceBindingService;
 import kg.alatoo.smarthousebackendsystem.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
