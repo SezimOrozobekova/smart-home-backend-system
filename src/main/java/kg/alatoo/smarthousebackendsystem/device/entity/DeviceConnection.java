@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -34,10 +36,12 @@ public class DeviceConnection {
     @Column(name = "external_device_id")
     private String externalDeviceId;
 
-    @Column(name = "config_json", columnDefinition = "jsonb", nullable = false)
-    private String configJson = "{}";
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", nullable = false)
+    private String configJson;
 
-    @Column(name = "credentials_json", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
     private String credentialsJson;
 
     @Column(name = "last_error")

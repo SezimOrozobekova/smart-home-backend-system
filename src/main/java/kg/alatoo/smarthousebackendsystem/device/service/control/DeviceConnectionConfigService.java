@@ -17,7 +17,7 @@ public class DeviceConnectionConfigService {
             String json = connection.getConfigJson();
 
             if (json == null || json.isBlank()) {
-                return new ShellyMqttConfig(null);
+                return new ShellyMqttConfig(null, null, null);
             }
 
             return objectMapper.readValue(json, ShellyMqttConfig.class);

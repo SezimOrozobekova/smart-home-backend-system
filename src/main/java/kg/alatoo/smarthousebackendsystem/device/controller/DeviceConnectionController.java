@@ -3,7 +3,7 @@ package kg.alatoo.smarthousebackendsystem.device.controller;
 import jakarta.validation.Valid;
 import kg.alatoo.smarthousebackendsystem.device.payload.request.UpsertDeviceConnectionRequest;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceConnectionResponse;
-import kg.alatoo.smarthousebackendsystem.device.service.DeviceConnectionService;
+import kg.alatoo.smarthousebackendsystem.device.service.control.DeviceConnectionService;
 import kg.alatoo.smarthousebackendsystem.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

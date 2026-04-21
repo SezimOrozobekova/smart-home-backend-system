@@ -1,4 +1,4 @@
-package kg.alatoo.smarthousebackendsystem.device.service;
+package kg.alatoo.smarthousebackendsystem.device.service.control;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -119,6 +119,10 @@ public class DeviceBindingService {
     private String buildCredentialsJson() {
         Map<String, Object> credentials = new LinkedHashMap<>();
         credentials.put("username", mqttProperties.getUsername());
+
+        if (mqttProperties.getPassword() != null && !mqttProperties.getPassword().isBlank()) {
+            credentials.put("password", mqttProperties.getPassword());
+        }
 
         try {
             return objectMapper.writeValueAsString(credentials);
