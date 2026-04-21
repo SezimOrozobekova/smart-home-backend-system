@@ -42,9 +42,6 @@ public class ShellyMqttToggleHandler implements DeviceToggleHandler {
 
         try {
             mqttService.publish(topic, payload);
-
-            state.setIsOn(nextOn);
-            state.setIsOnline(true);
             state.setLastSeenAt(Instant.now());
 
             return deviceStateRepository.save(state);

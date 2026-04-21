@@ -1,5 +1,6 @@
 package kg.alatoo.smarthousebackendsystem.device.service.control;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import kg.alatoo.smarthousebackendsystem.config.MqttProperties;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,8 @@ import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Slf4j
 @Service
@@ -16,7 +19,24 @@ public class MqttService {
 
     private final MqttProperties mqttProperties;
 
+    private final List<MqttMessageListener> listeners = new CopyOnWriteArrayList<>();
+
     private MqttClient mqttClient;
+
+    @PostConstruct
+    public void init() {
+        if (!mqttProperties.isEnabled()) {
+            log.info("MQTT is disabled, listener startup skipped");
+            return;
+        }
+
+        try {
+            ensureConnected();
+            subscribeInternal("devices/+/events/rpc");
+        } catch (Exception e) {
+            log.error("Failed to initialize MQTT listener", e);
+        }
+    }
 
     public synchronized void publish(String topic, String payload) {
         if (!mqttProperties.isEnabled()) {
@@ -30,16 +50,21 @@ public class MqttService {
             message.setQos(1);
 
             mqttClient.publish(topic, message);
+            log.info("Published MQTT message to topic={}", topic);
         } catch (Exception e) {
             throw new RuntimeException("Failed to publish MQTT message", e);
         }
+    }
+
+    public void registerListener(MqttMessageListener listener) {
+        listeners.add(listener);
     }
 
     public synchronized boolean isConnected() {
         return mqttClient != null && mqttClient.isConnected();
     }
 
-    private void ensureConnected() throws MqttException {
+    private synchronized void ensureConnected() throws MqttException {
         if (mqttClient != null && mqttClient.isConnected()) {
             return;
         }
@@ -49,6 +74,32 @@ public class MqttService {
                     mqttProperties.getBrokerUrl(),
                     mqttProperties.getClientId()
             );
+
+            mqttClient.setCallback(new MqttCallback() {
+                @Override
+                public void connectionLost(Throwable cause) {
+                    log.warn("MQTT connection lost", cause);
+                }
+
+                @Override
+                public void messageArrived(String topic, MqttMessage message) {
+                    String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
+                    log.info("MQTT message arrived topic={}, payload={}", topic, payload);
+
+                    for (MqttMessageListener listener : listeners) {
+                        try {
+                            listener.onMessage(topic, payload);
+                        } catch (Exception e) {
+                            log.error("Failed to process MQTT message in listener {}", listener.getClass().getSimpleName(), e);
+                        }
+                    }
+                }
+
+                @Override
+                public void deliveryComplete(IMqttDeliveryToken token) {
+                    // no-op
+                }
+            });
         }
 
         MqttConnectOptions options = new MqttConnectOptions();
@@ -69,6 +120,12 @@ public class MqttService {
         log.info("MQTT connected");
     }
 
+    private synchronized void subscribeInternal(String topicFilter) throws MqttException {
+        ensureConnected();
+        mqttClient.subscribe(topicFilter, 1);
+        log.info("Subscribed to MQTT topic filter={}", topicFilter);
+    }
+
     @PreDestroy
     public synchronized void shutdown() {
         try {
@@ -78,5 +135,9 @@ public class MqttService {
         } catch (Exception e) {
             log.warn("Failed to disconnect MQTT client cleanly", e);
         }
+    }
+
+    public interface MqttMessageListener {
+        void onMessage(String topic, String payload);
     }
 }
