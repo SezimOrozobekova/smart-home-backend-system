@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 
 @Slf4j
@@ -70,6 +69,8 @@ public class ShellyMqttListenerService {
                 if (!apower.isMissingNode() && apower.isNumber()) {
                     state.setPowerWatts(apower.decimalValue());
                 }
+            } else {
+                log.warn("switch:0 not found in params");
             }
 
             state.setIsOnline(true);

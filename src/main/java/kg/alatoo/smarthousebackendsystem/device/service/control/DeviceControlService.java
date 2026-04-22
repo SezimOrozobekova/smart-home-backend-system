@@ -23,16 +23,14 @@ public class DeviceControlService {
     private final DeviceToggleCoordinator deviceToggleCoordinator;
 
     @Transactional
-    public DeviceStateResponse toggleDevice(UUID deviceId) {
+    public DeviceStateResponse setDevicePower(UUID deviceId, boolean desiredOn) {
         DeviceState state = deviceStateRepository.findByDeviceId(deviceId)
                 .orElseThrow(() -> new RuntimeException("Device state not found"));
 
         DeviceConnection connection = deviceConnectionRepository.findByDeviceId(deviceId)
                 .orElseThrow(() -> new RuntimeException("Device connection not found"));
 
-        boolean nextOn = !Boolean.TRUE.equals(state.getIsOn());
-
-        DeviceState updatedState = deviceToggleCoordinator.toggle(state, connection, nextOn);
+        DeviceState updatedState = deviceToggleCoordinator.toggle(state, connection, desiredOn);
         return deviceStateMapper.toResponse(updatedState);
     }
 }

@@ -5,5 +5,5 @@ import kg.alatoo.smarthousebackendsystem.device.entity.DeviceState;
 
 public interface DeviceToggleHandler {
     boolean supports(DeviceConnection connection);
-    DeviceState toggle(DeviceState state, DeviceConnection connection, boolean nextOn);
+    DeviceState toggle(DeviceState state, DeviceConnection connection, boolean desiredOn);
 }

@@ -7,11 +7,13 @@ import kg.alatoo.smarthousebackendsystem.device.entity.DeviceState;
 import kg.alatoo.smarthousebackendsystem.device.payload.config.ShellyMqttConfig;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ShellyMqttToggleHandler implements DeviceToggleHandler {
@@ -28,7 +30,7 @@ public class ShellyMqttToggleHandler implements DeviceToggleHandler {
 
     @Override
     @Transactional
-    public DeviceState toggle(DeviceState state, DeviceConnection connection, boolean nextOn) {
+    public DeviceState toggle(DeviceState state, DeviceConnection connection, boolean desiredOn) {
         validate(connection);
 
         ShellyMqttConfig config = configService.getShellyMqttConfig(connection);
@@ -38,9 +40,10 @@ public class ShellyMqttToggleHandler implements DeviceToggleHandler {
         }
 
         String topic = config.topicPrefix() + "/rpc";
-        String payload = buildTogglePayload(nextOn);
+        String payload = buildTogglePayload(desiredOn);
 
         try {
+            log.info("Publishing Shelly command topic={}, payload={}", topic, payload);
             mqttService.publish(topic, payload);
             state.setLastSeenAt(Instant.now());
 

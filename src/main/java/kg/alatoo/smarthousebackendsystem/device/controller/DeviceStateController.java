@@ -15,7 +15,6 @@ import java.util.UUID;
 public class DeviceStateController {
 
     private final DeviceStateService deviceStateService;
-    private final DeviceControlService deviceControlService;
 
     @GetMapping("/device/{deviceId}")
     public DeviceStateResponse getByDeviceId(@PathVariable UUID deviceId) {
@@ -28,10 +27,5 @@ public class DeviceStateController {
             @RequestBody UpdateDeviceStateRequest request
     ) {
         return deviceStateService.updateByDeviceId(deviceId, request);
-    }
-
-    @PostMapping("/{deviceId}/toggle")
-    public DeviceStateResponse toggleDevice(@PathVariable UUID deviceId) {
-        return deviceControlService.toggleDevice(deviceId);
     }
 }
