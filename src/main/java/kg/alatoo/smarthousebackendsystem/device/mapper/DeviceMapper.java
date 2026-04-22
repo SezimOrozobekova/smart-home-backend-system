@@ -26,6 +26,7 @@ public interface DeviceMapper {
     @Mapping(source = "active", target = "active")
     @Mapping(source = "online", target = "online")
     @Mapping(source = "updatedAt", target = "updatedAt")
+    @Mapping(source = "isOn", target = "isOn")
     DeviceItemResponse toResponse(
             Device device,
             String roomName,
@@ -33,6 +34,7 @@ public interface DeviceMapper {
             Integer basePower,
             Boolean active,
             Boolean online,
-            Instant updatedAt
+            Instant updatedAt,
+            Boolean isOn
     );
 }

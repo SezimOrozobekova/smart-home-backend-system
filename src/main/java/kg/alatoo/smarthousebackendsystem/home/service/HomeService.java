@@ -92,8 +92,10 @@ public class HomeService {
                                 Boolean active = false;
                                 Boolean online = false;
                                 Instant updatedAt = null;
+                                Boolean isOn = false;
 
                                 if (state != null) {
+                                    isOn = Boolean.TRUE.equals(state.getIsOn());
                                     power = state.getPowerWatts() != null
                                             ? state.getPowerWatts().intValue()
                                             : 0;
@@ -116,13 +118,14 @@ public class HomeService {
                                         basePower,
                                         active,
                                         online,
-                                        updatedAt
+                                        updatedAt,
+                                        isOn
                                 );
                             })
                             .toList();
 
                     int activeDevices = (int) deviceResponses.stream()
-                            .filter(device -> Boolean.TRUE.equals(device.active()))
+                            .filter(device -> Boolean.TRUE.equals(device.isOn()))
                             .count();
 
                     int totalPower = deviceResponses.stream()

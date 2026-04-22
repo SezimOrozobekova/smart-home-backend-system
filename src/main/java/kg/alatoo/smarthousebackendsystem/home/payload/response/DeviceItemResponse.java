@@ -11,6 +11,7 @@ public record DeviceItemResponse(
         Integer power,
         Integer basePower,
         Boolean active,
+        Boolean isOn,
         Boolean online,
         Instant updatedAt
 ) {
