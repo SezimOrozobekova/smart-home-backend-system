@@ -1,4 +1,4 @@
-package kg.alatoo.smarthousebackendsystem.device.service.control;
+package kg.alatoo.smarthousebackendsystem.device.service.connection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceConnection;

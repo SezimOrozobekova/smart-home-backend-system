@@ -1,44 +1,33 @@
-package kg.alatoo.smarthousebackendsystem.device.service.control;
+package kg.alatoo.smarthousebackendsystem.device.service.mqtt.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceConnection;
-import kg.alatoo.smarthousebackendsystem.device.entity.DeviceState;
+import kg.alatoo.smarthousebackendsystem.device.entity.ShellyStatusSnapshot;
 import kg.alatoo.smarthousebackendsystem.device.payload.config.ShellyMqttConfig;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceConnectionRepository;
-import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
+import kg.alatoo.smarthousebackendsystem.device.service.connection.DeviceConnectionConfigService;
+import kg.alatoo.smarthousebackendsystem.device.service.telemetry.cache.DeviceTelemetryCache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ShellyMqttListenerService {
+public class ShellyMqttTelemetryService {
 
-    private final MqttService mqttService;
     private final ObjectMapper objectMapper;
     private final DeviceConnectionRepository deviceConnectionRepository;
-    private final DeviceStateRepository deviceStateRepository;
     private final DeviceConnectionConfigService deviceConnectionConfigService;
+    private final DeviceTelemetryCache deviceTelemetryCache;
 
-    @PostConstruct
-    public void register() {
-        mqttService.registerListener(this::handleMessage);
-    }
-
-    @Transactional
-    public void handleMessage(String topic, String payload) {
-        if (!topic.endsWith("/events/rpc")) {
-            return;
-        }
-
+    public void handle(String topic, String payload) {
         try {
             String topicPrefix = extractTopicPrefix(topic);
+
             DeviceConnection connection = findByTopicPrefix(topicPrefix);
             if (connection == null) {
                 log.warn("No device connection found for topicPrefix={}", topicPrefix);
@@ -54,34 +43,45 @@ public class ShellyMqttListenerService {
 
             JsonNode params = root.path("params");
             JsonNode switchNode = params.path("switch:0");
-
-            DeviceState state = deviceStateRepository.findByDeviceId(connection.getDevice().getId())
-                    .orElseGet(() -> {
-                        DeviceState newState = new DeviceState();
-                        newState.setDevice(connection.getDevice());
-                        return newState;
-                    });
-
-            if (!switchNode.isMissingNode()) {
-                state.setIsOn(switchNode.path("output").asBoolean(false));
-
-                JsonNode apower = switchNode.path("apower");
-                if (!apower.isMissingNode() && apower.isNumber()) {
-                    state.setPowerWatts(apower.decimalValue());
-                }
-            } else {
-                log.warn("switch:0 not found in params");
+            if (switchNode.isMissingNode()) {
+                return;
             }
 
-            state.setIsOnline(true);
-            state.setLastSeenAt(Instant.now());
-            state.setRecordedAt(Instant.now());
+            Boolean isOn = switchNode.has("output")
+                    ? switchNode.get("output").asBoolean()
+                    : null;
 
-            deviceStateRepository.save(state);
-            log.info("Updated device state from MQTT for deviceId={}", connection.getDevice().getId());
+            BigDecimal powerWatts = switchNode.has("apower") && switchNode.get("apower").isNumber()
+                    ? switchNode.get("apower").decimalValue()
+                    : null;
+
+            BigDecimal current = switchNode.has("current") && switchNode.get("current").isNumber()
+                    ? switchNode.get("current").decimalValue()
+                    : null;
+
+            BigDecimal totalEnergyWh = null;
+            if (switchNode.has("aenergy")) {
+                JsonNode aenergyNode = switchNode.get("aenergy");
+                if (aenergyNode.has("total") && aenergyNode.get("total").isNumber()) {
+                    totalEnergyWh = aenergyNode.get("total").decimalValue();
+                }
+            }
+
+            ShellyStatusSnapshot snapshot = new ShellyStatusSnapshot(
+                    isOn,
+                    powerWatts,
+                    null,
+                    current,
+                    totalEnergyWh,
+                    null
+            );
+
+            deviceTelemetryCache.put(connection.getDevice().getId(), snapshot);
+
+            log.info("Telemetry cache updated for deviceId={}", connection.getDevice().getId());
 
         } catch (Exception e) {
-            log.error("Failed to process Shelly MQTT message topic={}", topic, e);
+            log.error("Failed to process telemetry topic={}, payload={}", topic, payload, e);
         }
     }
 

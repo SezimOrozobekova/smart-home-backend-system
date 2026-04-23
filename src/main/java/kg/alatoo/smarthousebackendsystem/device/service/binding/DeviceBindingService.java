@@ -1,4 +1,4 @@
-package kg.alatoo.smarthousebackendsystem.device.service.control;
+package kg.alatoo.smarthousebackendsystem.device.service.binding;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +13,7 @@ import kg.alatoo.smarthousebackendsystem.device.payload.response.BindInitRespons
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceConnectionResponse;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceConnectionRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
+import kg.alatoo.smarthousebackendsystem.device.service.connection.DeviceConnectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

@@ -1,4 +1,4 @@
-package kg.alatoo.smarthousebackendsystem.device.service.control;
+package kg.alatoo.smarthousebackendsystem.device.service.connection;
 
 import kg.alatoo.smarthousebackendsystem.device.entity.Device;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceConnection;

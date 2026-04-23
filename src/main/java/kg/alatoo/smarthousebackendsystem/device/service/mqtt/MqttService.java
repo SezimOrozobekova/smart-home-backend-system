@@ -1,4 +1,4 @@
-package kg.alatoo.smarthousebackendsystem.device.service.control;
+package kg.alatoo.smarthousebackendsystem.device.service.mqtt;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -33,6 +33,7 @@ public class MqttService {
         try {
             ensureConnected();
             subscribeInternal("devices/+/events/rpc");
+            subscribeInternal("smarthouse-backend/rpc");
         } catch (Exception e) {
             log.error("Failed to initialize MQTT listener", e);
         }
@@ -50,7 +51,6 @@ public class MqttService {
             message.setQos(1);
 
             mqttClient.publish(topic, message);
-            log.info("Published MQTT message to topic={}", topic);
         } catch (Exception e) {
             throw new RuntimeException("Failed to publish MQTT message", e);
         }
@@ -58,6 +58,17 @@ public class MqttService {
 
     public void registerListener(MqttMessageListener listener) {
         listeners.add(listener);
+    }
+
+    public synchronized void subscribe(String topicFilter) {
+        if (!mqttProperties.isEnabled()) {
+            throw new RuntimeException("MQTT is disabled");
+        }
+        try {
+            subscribeInternal(topicFilter);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to subscribe to topic " + topicFilter, e);
+        }
     }
 
     public synchronized boolean isConnected() {
@@ -90,7 +101,11 @@ public class MqttService {
                         try {
                             listener.onMessage(topic, payload);
                         } catch (Exception e) {
-                            log.error("Failed to process MQTT message in listener {}", listener.getClass().getSimpleName(), e);
+                            log.error(
+                                    "Failed to process MQTT message in listener {}",
+                                    listener.getClass().getSimpleName(),
+                                    e
+                            );
                         }
                     }
                 }
