@@ -36,4 +36,10 @@ public class Room {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "room_width", nullable = false)
+    private Integer roomWidth = 12;
+
+    @Column(name = "room_depth", nullable = false)
+    private Integer roomDepth = 12;
 }

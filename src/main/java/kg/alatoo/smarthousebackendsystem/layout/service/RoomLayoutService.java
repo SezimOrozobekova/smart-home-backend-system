@@ -42,7 +42,10 @@ public class RoomLayoutService {
         Room room = roomRepository.findByIdAndHomeOwnerId(roomId, userId)
                 .orElseThrow(() -> new RuntimeException("Room not found or access denied"));
 
-        // Сначала удаляем состояния, потом layout, потом devices
+        room.setRoomWidth(request.roomWidth());
+        room.setRoomDepth(request.roomDepth());
+        roomRepository.save(room);
+
         deviceStateRepository.deleteAllByDeviceRoomId(roomId);
         deviceLayoutRepository.deleteAllByDeviceRoomId(roomId);
         deviceRepository.deleteAllByRoomId(roomId);
@@ -76,6 +79,76 @@ public class RoomLayoutService {
             DeviceState state = buildInitialDeviceState(savedDevice, deviceType);
             deviceStateRepository.save(state);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public RoomLayoutResponse getRoomLayout(UUID userId, UUID roomId) {
+        Room room = roomRepository.findByIdAndHomeOwnerId(roomId, userId)
+                .orElseThrow(() -> new RuntimeException("Room not found or access denied"));
+
+        List<DeviceLayout> layouts = deviceLayoutRepository.findAllByDeviceRoomId(roomId);
+
+        List<RoomLayoutItemResponse> items = layouts.stream()
+                .map(this::toLayoutItemResponse)
+                .toList();
+
+        return new RoomLayoutResponse(
+                room.getId(),
+                room.getName(),
+                room.getRoomWidth(),
+                room.getRoomDepth(),
+                items
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<RoomLayoutResponse> getMyRoomLayouts(UUID userId) {
+        List<Room> rooms = roomRepository.findAllByHomeOwnerId(userId);
+
+        if (rooms.isEmpty()) {
+            return List.of();
+        }
+
+        return rooms.stream()
+                .map(room -> {
+                    List<DeviceLayout> layouts = deviceLayoutRepository.findAllByDeviceRoomId(room.getId());
+
+                    List<RoomLayoutItemResponse> items = layouts.stream()
+                            .map(this::toLayoutItemResponse)
+                            .toList();
+
+                    return new RoomLayoutResponse(
+                            room.getId(),
+                            room.getName(),
+                            room.getRoomWidth(),
+                            room.getRoomDepth(),
+                            items
+                    );
+                })
+                .toList();
+    }
+
+    private RoomLayoutItemResponse toLayoutItemResponse(DeviceLayout layout) {
+        Device device = layout.getDevice();
+        DeviceType deviceType = device.getDeviceType();
+
+        return new RoomLayoutItemResponse(
+                device.getId(),
+                deviceType.getId(),
+                deviceType.getCode(),
+                deviceType.getName(),
+                device.getName(),
+                layout.getPositionX(),
+                layout.getPositionY(),
+                layout.getPositionZ(),
+                layout.getRotationX(),
+                layout.getRotationY(),
+                layout.getRotationZ(),
+                layout.getScaleX(),
+                layout.getScaleY(),
+                layout.getScaleZ(),
+                device.getIsActive()
+        );
     }
 
     private DeviceState buildInitialDeviceState(Device device, DeviceType deviceType) {
@@ -113,92 +186,5 @@ public class RoomLayoutService {
         raw.put("powerWatts", 0);
         raw.put("createdAt", Instant.now().toString());
         return raw;
-    }
-
-    @Transactional(readOnly = true)
-    public RoomLayoutResponse getRoomLayout(UUID userId, UUID roomId) {
-        Room room = roomRepository.findByIdAndHomeOwnerId(roomId, userId)
-                .orElseThrow(() -> new RuntimeException("Room not found or access denied"));
-
-        List<DeviceLayout> layouts = deviceLayoutRepository.findAllByDeviceRoomId(roomId);
-
-        List<RoomLayoutItemResponse> items = layouts.stream()
-                .map(layout -> {
-                    Device device = layout.getDevice();
-
-                    return new RoomLayoutItemResponse(
-                            device.getId(),
-                            device.getDeviceType().getId(),
-                            device.getDeviceType().getCode(),
-                            device.getDeviceType().getName(),
-                            device.getName(),
-                            layout.getPositionX(),
-                            layout.getPositionY(),
-                            layout.getPositionZ(),
-                            layout.getRotationX(),
-                            layout.getRotationY(),
-                            layout.getRotationZ(),
-                            layout.getScaleX(),
-                            layout.getScaleY(),
-                            layout.getScaleZ(),
-                            device.getIsActive()
-                    );
-                })
-                .toList();
-
-        return new RoomLayoutResponse(
-                room.getId(),
-                room.getName(),
-                12,
-                12,
-                items
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public List<RoomLayoutResponse> getMyRoomLayouts(UUID userId) {
-        List<Room> rooms = roomRepository.findAllByHomeOwnerId(userId);
-
-        if (rooms.isEmpty()) {
-            return List.of();
-        }
-
-        return rooms.stream()
-                .map(room -> {
-                    List<DeviceLayout> layouts = deviceLayoutRepository.findAllByDeviceRoomId(room.getId());
-
-                    List<RoomLayoutItemResponse> items = layouts.stream()
-                            .map(layout -> {
-                                Device device = layout.getDevice();
-
-                                return new RoomLayoutItemResponse(
-                                        device.getId(),
-                                        device.getDeviceType().getId(),
-                                        device.getDeviceType().getCode(),
-                                        device.getDeviceType().getName(),
-                                        device.getName(),
-                                        layout.getPositionX(),
-                                        layout.getPositionY(),
-                                        layout.getPositionZ(),
-                                        layout.getRotationX(),
-                                        layout.getRotationY(),
-                                        layout.getRotationZ(),
-                                        layout.getScaleX(),
-                                        layout.getScaleY(),
-                                        layout.getScaleZ(),
-                                        device.getIsActive()
-                                );
-                            })
-                            .toList();
-
-                    return new RoomLayoutResponse(
-                            room.getId(),
-                            room.getName(),
-                            12,
-                            12,
-                            items
-                    );
-                })
-                .toList();
     }
 }
