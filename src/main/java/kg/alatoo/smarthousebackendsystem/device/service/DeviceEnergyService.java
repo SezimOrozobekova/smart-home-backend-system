@@ -49,33 +49,20 @@ public class DeviceEnergyService {
         );
 
         BigDecimal consumedKwh = toKwh(consumedWh);
-
-        List<DeviceEnergyHistory> points = deviceEnergyHistoryRepository
-                .findByDeviceIdAndRecordedAtGreaterThanEqualAndRecordedAtLessThanOrderByRecordedAtAsc(
-                        deviceId,
-                        from,
-                        to
-                );
-
-        BigDecimal firstTotalWh = points.stream()
-                .map(DeviceEnergyHistory::getTotalEnergyWh)
-                .filter(value -> value != null)
-                .findFirst()
-                .orElse(BigDecimal.ZERO);
-
-        BigDecimal lastTotalWh = points.stream()
-                .map(DeviceEnergyHistory::getTotalEnergyWh)
-                .filter(value -> value != null)
-                .reduce((first, second) -> second)
-                .orElse(BigDecimal.ZERO);
+        BigDecimal cost = calculateCost(consumedKwh);
 
         return new MonthlyEnergyResponse(
                 month.toString(),
-                firstTotalWh,
-                lastTotalWh,
                 consumedWh,
-                consumedKwh
+                consumedKwh,
+                cost
         );
+    }
+
+    private BigDecimal calculateCost(BigDecimal kwh) {
+        return safe(kwh)
+                .multiply(BigDecimal.valueOf(2.16))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     public MonthlyEnergyResponse getMonthlyConsumptionByUser(UUID userId, YearMonth month, ZoneId zone) {
@@ -86,12 +73,14 @@ public class DeviceEnergyService {
                 deviceEnergyHistoryRepository.calculateConsumptionWhByUserId(userId, from, to)
         );
 
+        BigDecimal consumedKwh = toKwh(consumedWh);
+        BigDecimal cost = calculateCost(consumedKwh);
+
         return new MonthlyEnergyResponse(
                 month.toString(),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
                 consumedWh,
-                toKwh(consumedWh)
+                consumedKwh,
+                cost
         );
     }
 
