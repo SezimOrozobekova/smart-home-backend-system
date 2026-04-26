@@ -5,14 +5,20 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class DashboardSummaryResponse {
+
     private long devicesConnected;
     private long activeDevices;
     private long roomsMonitored;
-    private double estimatedMonthlyCost;
-    private double costDifferenceFromLastMonth;
+
+    private BigDecimal consumedWh;
+    private BigDecimal consumedKwh;
+    private BigDecimal estimatedMonthlyCost;
+    private BigDecimal costDifferenceFromLastMonth;
 }

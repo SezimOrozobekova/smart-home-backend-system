@@ -1,10 +1,10 @@
 package kg.alatoo.smarthousebackendsystem.device.service;
 
-import kg.alatoo.smarthousebackendsystem.device.entity.DeviceEnergyHistory;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.EnergyPointResponse;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.MonthlyEnergyResponse;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceEnergyHistoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +20,9 @@ import java.util.UUID;
 public class DeviceEnergyService {
 
     private final DeviceEnergyHistoryRepository deviceEnergyHistoryRepository;
+
+    @Value("${energy.price-per-kwh}")
+    private BigDecimal pricePerKwh;
 
     public List<EnergyPointResponse> getDailyChart(UUID deviceId, LocalDate date, ZoneId zone) {
         Instant from = date.atStartOfDay(zone).toInstant();
@@ -59,12 +62,6 @@ public class DeviceEnergyService {
         );
     }
 
-    private BigDecimal calculateCost(BigDecimal kwh) {
-        return safe(kwh)
-                .multiply(BigDecimal.valueOf(2.16))
-                .setScale(2, RoundingMode.HALF_UP);
-    }
-
     public MonthlyEnergyResponse getMonthlyConsumptionByUser(UUID userId, YearMonth month, ZoneId zone) {
         Instant from = month.atDay(1).atStartOfDay(zone).toInstant();
         Instant to = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant();
@@ -82,6 +79,12 @@ public class DeviceEnergyService {
                 consumedKwh,
                 cost
         );
+    }
+
+    private BigDecimal calculateCost(BigDecimal kwh) {
+        return safe(kwh)
+                .multiply(pricePerKwh)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal safe(BigDecimal value) {
