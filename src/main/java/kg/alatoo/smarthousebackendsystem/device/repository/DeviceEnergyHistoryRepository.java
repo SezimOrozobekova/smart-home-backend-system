@@ -11,23 +11,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface DeviceEnergyHistoryRepository extends JpaRepository<DeviceEnergyHistory, UUID> {
-
-    List<DeviceEnergyHistory> findByDeviceIdAndRecordedAtBetweenOrderByRecordedAtAsc(
-            UUID deviceId,
-            Instant from,
-            Instant to
-    );
-
-    Optional<DeviceEnergyHistory> findFirstByDeviceIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(
-            UUID deviceId,
-            Instant from
-    );
-
-    Optional<DeviceEnergyHistory> findFirstByDeviceIdAndRecordedAtLessThanEqualOrderByRecordedAtDesc(
-            UUID deviceId,
-            Instant to
-    );
-
     @Query(value = """
         WITH first_readings AS (
             SELECT DISTINCT ON (deh.device_id)
@@ -60,6 +43,86 @@ public interface DeviceEnergyHistoryRepository extends JpaRepository<DeviceEnerg
         JOIN last_readings l ON l.device_id = f.device_id
         """, nativeQuery = true)
     BigDecimal calculateMonthlyConsumptionWhByUserId(
+            UUID userId,
+            Instant from,
+            Instant to
+    );
+
+    List<DeviceEnergyHistory> findByDeviceIdAndRecordedAtGreaterThanEqualAndRecordedAtLessThanOrderByRecordedAtAsc(
+            UUID deviceId,
+            Instant from,
+            Instant to
+    );
+
+    @Query(value = """
+        WITH first_reading AS (
+            SELECT deh.total_energy_wh AS first_total
+            FROM device_energy_history deh
+            WHERE deh.device_id = :deviceId
+              AND deh.recorded_at >= :from
+              AND deh.recorded_at < :to
+              AND deh.total_energy_wh IS NOT NULL
+            ORDER BY deh.recorded_at ASC
+            LIMIT 1
+        ),
+        last_reading AS (
+            SELECT deh.total_energy_wh AS last_total
+            FROM device_energy_history deh
+            WHERE deh.device_id = :deviceId
+              AND deh.recorded_at >= :from
+              AND deh.recorded_at < :to
+              AND deh.total_energy_wh IS NOT NULL
+            ORDER BY deh.recorded_at DESC
+            LIMIT 1
+        )
+        SELECT COALESCE(
+            GREATEST(
+                (SELECT last_total FROM last_reading) - (SELECT first_total FROM first_reading),
+                0
+            ),
+            0
+        )
+        """, nativeQuery = true)
+    BigDecimal calculateConsumptionWhByDeviceId(
+            UUID deviceId,
+            Instant from,
+            Instant to
+    );
+
+    @Query(value = """
+        WITH first_readings AS (
+            SELECT DISTINCT ON (deh.device_id)
+                deh.device_id,
+                deh.total_energy_wh AS first_total
+            FROM device_energy_history deh
+            JOIN devices d ON d.id = deh.device_id
+            JOIN rooms r ON r.id = d.room_id
+            JOIN homes h ON h.id = r.home_id
+            WHERE h.owner_id = :userId
+              AND deh.recorded_at >= :from
+              AND deh.recorded_at < :to
+              AND deh.total_energy_wh IS NOT NULL
+            ORDER BY deh.device_id, deh.recorded_at ASC
+        ),
+        last_readings AS (
+            SELECT DISTINCT ON (deh.device_id)
+                deh.device_id,
+                deh.total_energy_wh AS last_total
+            FROM device_energy_history deh
+            JOIN devices d ON d.id = deh.device_id
+            JOIN rooms r ON r.id = d.room_id
+            JOIN homes h ON h.id = r.home_id
+            WHERE h.owner_id = :userId
+              AND deh.recorded_at >= :from
+              AND deh.recorded_at < :to
+              AND deh.total_energy_wh IS NOT NULL
+            ORDER BY deh.device_id, deh.recorded_at DESC
+        )
+        SELECT COALESCE(SUM(GREATEST(l.last_total - f.first_total, 0)), 0)
+        FROM first_readings f
+        JOIN last_readings l ON l.device_id = f.device_id
+        """, nativeQuery = true)
+    BigDecimal calculateConsumptionWhByUserId(
             UUID userId,
             Instant from,
             Instant to
