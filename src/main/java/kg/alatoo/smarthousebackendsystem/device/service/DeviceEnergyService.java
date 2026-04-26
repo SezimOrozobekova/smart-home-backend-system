@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import kg.alatoo.smarthousebackendsystem.device.payload.request.EnergyPeriod;
+import kg.alatoo.smarthousebackendsystem.device.payload.response.EnergyChartPointResponse;
+import kg.alatoo.smarthousebackendsystem.device.repository.projection.EnergyChartPointProjection;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -94,5 +97,70 @@ public class DeviceEnergyService {
     private BigDecimal toKwh(BigDecimal wh) {
         return safe(wh)
                 .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+    }
+
+    public List<EnergyChartPointResponse> getEnergyChartByUser(
+            UUID userId,
+            EnergyPeriod period,
+            LocalDate date,
+            ZoneId zone
+    ) {
+        Instant from;
+        Instant to;
+        List<EnergyChartPointProjection> points;
+
+        switch (period) {
+            case DAY -> {
+                from = date.atStartOfDay(zone).toInstant();
+                to = date.plusDays(1).atStartOfDay(zone).toInstant();
+
+                points = deviceEnergyHistoryRepository.getUserHourlyEnergyChart(
+                        userId,
+                        from,
+                        to
+                );
+            }
+            case WEEK -> {
+                LocalDate weekStart = date.with(DayOfWeek.MONDAY);
+                LocalDate weekEnd = weekStart.plusWeeks(1);
+
+                from = weekStart.atStartOfDay(zone).toInstant();
+                to = weekEnd.atStartOfDay(zone).toInstant();
+
+                points = deviceEnergyHistoryRepository.getUserDailyEnergyChart(
+                        userId,
+                        from,
+                        to
+                );
+            }
+            case MONTH -> {
+                YearMonth month = YearMonth.from(date);
+
+                from = month.atDay(1).atStartOfDay(zone).toInstant();
+                to = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant();
+
+                points = deviceEnergyHistoryRepository.getUserDailyEnergyChart(
+                        userId,
+                        from,
+                        to
+                );
+            }
+            default -> throw new IllegalArgumentException("Unsupported energy period: " + period);
+        }
+
+        return points.stream()
+                .map(point -> {
+                    BigDecimal consumedWh = safe(point.getConsumedWh());
+                    BigDecimal consumedKwh = toKwh(consumedWh);
+                    BigDecimal cost = calculateCost(consumedKwh);
+
+                    return new EnergyChartPointResponse(
+                            point.getLabel(),
+                            consumedWh,
+                            consumedKwh,
+                            cost
+                    );
+                })
+                .toList();
     }
 }
