@@ -12,8 +12,8 @@ public class DeviceTelemetryCache {
 
     private final Map<UUID, ShellyStatusSnapshot> cache = new ConcurrentHashMap<>();
 
-    public void put(UUID deviceId, ShellyStatusSnapshot snapshot) {
-        cache.put(deviceId, snapshot);
+    public void merge(UUID deviceId, ShellyStatusSnapshot incoming) {
+        cache.merge(deviceId, incoming, this::mergeSnapshots);
     }
 
     public ShellyStatusSnapshot get(UUID deviceId) {
@@ -22,5 +22,36 @@ public class DeviceTelemetryCache {
 
     public Map<UUID, ShellyStatusSnapshot> getAll() {
         return cache;
+    }
+
+    private ShellyStatusSnapshot mergeSnapshots(
+            ShellyStatusSnapshot oldSnapshot,
+            ShellyStatusSnapshot newSnapshot
+    ) {
+        return new ShellyStatusSnapshot(
+                newSnapshot.isOn() != null
+                        ? newSnapshot.isOn()
+                        : oldSnapshot.isOn(),
+
+                newSnapshot.powerWatts() != null
+                        ? newSnapshot.powerWatts()
+                        : oldSnapshot.powerWatts(),
+
+                newSnapshot.voltage() != null
+                        ? newSnapshot.voltage()
+                        : oldSnapshot.voltage(),
+
+                newSnapshot.current() != null
+                        ? newSnapshot.current()
+                        : oldSnapshot.current(),
+
+                newSnapshot.totalEnergyWh() != null
+                        ? newSnapshot.totalEnergyWh()
+                        : oldSnapshot.totalEnergyWh(),
+
+                newSnapshot.temperatureC() != null
+                        ? newSnapshot.temperatureC()
+                        : oldSnapshot.temperatureC()
+        );
     }
 }

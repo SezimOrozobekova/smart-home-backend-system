@@ -76,7 +76,7 @@ public class ShellyMqttTelemetryService {
                     null
             );
 
-            deviceTelemetryCache.put(connection.getDevice().getId(), snapshot);
+            deviceTelemetryCache.merge(connection.getDevice().getId(), snapshot);
 
             log.info("Telemetry cache updated for deviceId={}", connection.getDevice().getId());
 
