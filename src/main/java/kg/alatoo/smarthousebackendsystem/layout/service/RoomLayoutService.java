@@ -46,38 +46,74 @@ public class RoomLayoutService {
         room.setRoomDepth(request.roomDepth());
         roomRepository.save(room);
 
-        deviceStateRepository.deleteAllByDeviceRoomId(roomId);
-        deviceLayoutRepository.deleteAllByDeviceRoomId(roomId);
-        deviceRepository.deleteAllByRoomId(roomId);
+        List<Device> existingDevices = deviceRepository.findAllByRoomId(roomId);
+
+        var incomingDeviceIds = request.items().stream()
+                .map(SaveRoomLayoutItemRequest::deviceId)
+                .filter(id -> id != null)
+                .collect(java.util.stream.Collectors.toSet());
+
+        for (Device device : existingDevices) {
+            if (!incomingDeviceIds.contains(device.getId())) {
+                device.setIsActive(false);
+                deviceLayoutRepository.deleteByDeviceId(device.getId());
+                deviceRepository.save(device);
+            }
+        }
 
         for (SaveRoomLayoutItemRequest item : request.items()) {
+
             DeviceType deviceType = deviceTypeRepository.findById(item.deviceTypeId())
                     .orElseThrow(() -> new RuntimeException("Device type not found: " + item.deviceTypeId()));
 
-            Device device = new Device();
-            device.setRoom(room);
-            device.setDeviceType(deviceType);
-            device.setName(item.name());
-            device.setIsActive(true);
+            Device device;
 
-            Device savedDevice = deviceRepository.save(device);
+            if (item.deviceId() != null) {
 
-            DeviceLayout layout = new DeviceLayout();
-            layout.setDevice(savedDevice);
+                device = deviceRepository.findByIdAndRoomId(item.deviceId(), roomId)
+                        .orElseThrow(() -> new RuntimeException("Device not found in this room"));
+
+                device.setDeviceType(deviceType);
+                device.setName(item.name());
+                device.setIsActive(true);
+
+                device = deviceRepository.save(device);
+            }
+
+            else {
+                device = new Device();
+                device.setRoom(room);
+                device.setDeviceType(deviceType);
+                device.setName(item.name());
+                device.setIsActive(true);
+
+                device = deviceRepository.save(device);
+
+                DeviceState state = buildInitialDeviceState(device, deviceType);
+                deviceStateRepository.save(state);
+            }
+
+            DeviceLayout layout = deviceLayoutRepository.findByDeviceId(device.getId())
+                    .orElse(null);
+
+            if (layout == null) {
+                layout = new DeviceLayout();
+                layout.setDevice(device);
+            }
+
             layout.setPositionX(item.positionX());
             layout.setPositionY(item.positionY());
             layout.setPositionZ(item.positionZ());
+
             layout.setRotationX(item.rotationX());
             layout.setRotationY(item.rotationY());
             layout.setRotationZ(item.rotationZ());
+
             layout.setScaleX(item.scaleX());
             layout.setScaleY(item.scaleY());
             layout.setScaleZ(item.scaleZ());
 
             deviceLayoutRepository.save(layout);
-
-            DeviceState state = buildInitialDeviceState(savedDevice, deviceType);
-            deviceStateRepository.save(state);
         }
     }
 

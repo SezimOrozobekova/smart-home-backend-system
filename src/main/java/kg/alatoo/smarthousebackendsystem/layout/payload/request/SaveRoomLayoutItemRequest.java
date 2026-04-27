@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record SaveRoomLayoutItemRequest(
+        UUID deviceId,
         @NotNull UUID deviceTypeId,
         @NotBlank String name,
         @NotNull Double positionX,

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface DeviceLayoutRepository extends JpaRepository<DeviceLayout, UUID> {
@@ -14,6 +15,8 @@ public interface DeviceLayoutRepository extends JpaRepository<DeviceLayout, UUID
     List<DeviceLayout> findAllByDeviceRoomId(UUID roomId);
 
     void deleteAllByDeviceRoomId(UUID roomId);
+
+    Optional<DeviceLayout> findByDeviceId(UUID deviceId);
 
     @Modifying
     @Query("""
