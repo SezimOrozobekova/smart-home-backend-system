@@ -3,6 +3,7 @@ package kg.alatoo.smarthousebackendsystem.device.service;
 import kg.alatoo.smarthousebackendsystem.device.entity.Device;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceState;
 import kg.alatoo.smarthousebackendsystem.device.entity.DeviceType;
+import kg.alatoo.smarthousebackendsystem.device.factory.DeviceFactory;
 import kg.alatoo.smarthousebackendsystem.device.mapper.DeviceMapper;
 import kg.alatoo.smarthousebackendsystem.device.payload.request.CreateDeviceRequest;
 import kg.alatoo.smarthousebackendsystem.device.payload.response.DeviceResponse;
@@ -17,8 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +33,7 @@ public class DeviceService {
     private final DeviceLayoutRepository deviceLayoutRepository;
     private final RoomRepository roomRepository;
     private final DeviceMapper deviceMapper;
+    private final DeviceFactory deviceFactory;
 
     public List<DeviceResponse> getAllByRoom(UUID roomId) {
         return deviceRepository.findAllByRoomId(roomId)
@@ -63,25 +63,18 @@ public class DeviceService {
         DeviceType deviceType = deviceTypeRepository.findById(request.deviceTypeId())
                 .orElseThrow(() -> new RuntimeException("Device type not found"));
 
-        Device device = new Device();
-        device.setRoom(room);
-        device.setDeviceType(deviceType);
-        device.setName(request.name());
-        device.setExternalId(request.externalId());
-        device.setModel(request.model());
-        device.setFirmwareVersion(request.firmwareVersion());
-        device.setIsActive(request.isActive());
+        Device device = deviceFactory.createDevice(
+                room,
+                deviceType,
+                request.name(),
+                request.externalId(),
+                request.model(),
+                request.firmwareVersion(),
+                request.isActive()
+        );
 
         Device savedDevice = deviceRepository.save(device);
-
-        DeviceState state = new DeviceState();
-        state.setDevice(savedDevice);
-        state.setIsOnline(false);
-        state.setIsOn(false);
-        state.setPowerWatts(BigDecimal.ZERO);
-        state.setPeakCapacityWatts(BigDecimal.ZERO);
-        state.setLastSeenAt(Instant.now());
-
+        DeviceState state = deviceFactory.createDefaultState(savedDevice);
         deviceStateRepository.save(state);
 
         return deviceMapper.toResponse(savedDevice);
