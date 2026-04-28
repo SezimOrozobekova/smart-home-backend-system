@@ -8,6 +8,7 @@ import kg.alatoo.smarthousebackendsystem.device.repository.DeviceRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceStateRepository;
 import kg.alatoo.smarthousebackendsystem.device.repository.DeviceTypeRepository;
 import kg.alatoo.smarthousebackendsystem.layout.entity.DeviceLayout;
+import kg.alatoo.smarthousebackendsystem.layout.factory.DeviceLayoutFactory;
 import kg.alatoo.smarthousebackendsystem.layout.payload.request.SaveRoomLayoutItemRequest;
 import kg.alatoo.smarthousebackendsystem.layout.payload.request.SaveRoomLayoutRequest;
 import kg.alatoo.smarthousebackendsystem.layout.payload.response.RoomLayoutItemResponse;
@@ -33,6 +34,7 @@ public class RoomLayoutService {
     private final DeviceLayoutRepository deviceLayoutRepository;
     private final DeviceStateRepository deviceStateRepository;
     private final DeviceFactory deviceFactory;
+    private final DeviceLayoutFactory deviceLayoutFactory;
 
     public void saveRoomLayout(UUID userId, UUID roomId, SaveRoomLayoutRequest request) {
         Room room = roomRepository.findByIdAndHomeOwnerId(roomId, userId)
@@ -89,25 +91,14 @@ public class RoomLayoutService {
                 deviceStateRepository.save(state);
             }
 
-            DeviceLayout layout = deviceLayoutRepository.findByDeviceId(device.getId())
+            DeviceLayout existingLayout = deviceLayoutRepository.findByDeviceId(device.getId())
                     .orElse(null);
 
-            if (layout == null) {
-                layout = new DeviceLayout();
-                layout.setDevice(device);
-            }
-
-            layout.setPositionX(item.positionX());
-            layout.setPositionY(item.positionY());
-            layout.setPositionZ(item.positionZ());
-
-            layout.setRotationX(item.rotationX());
-            layout.setRotationY(item.rotationY());
-            layout.setRotationZ(item.rotationZ());
-
-            layout.setScaleX(item.scaleX());
-            layout.setScaleY(item.scaleY());
-            layout.setScaleZ(item.scaleZ());
+            DeviceLayout layout = deviceLayoutFactory.createOrUpdateLayout(
+                    existingLayout,
+                    device,
+                    item
+            );
 
             deviceLayoutRepository.save(layout);
         }
