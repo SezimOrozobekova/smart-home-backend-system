@@ -163,4 +163,39 @@ public class DeviceEnergyService {
                 })
                 .toList();
     }
+
+    public BigDecimal getConsumptionKwhByUserForDate(UUID userId, LocalDate date, ZoneId zone) {
+        Instant from = date.atStartOfDay(zone).toInstant();
+        Instant to = date.plusDays(1).atStartOfDay(zone).toInstant();
+
+        BigDecimal wh = safe(
+                deviceEnergyHistoryRepository.calculateConsumptionWhByUserId(userId, from, to)
+        );
+
+        return toKwh(wh);
+    }
+
+    public BigDecimal getAverageDailyConsumptionKwh(
+            UUID userId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            ZoneId zone
+    ) {
+        BigDecimal total = BigDecimal.ZERO;
+        int days = 0;
+
+        LocalDate current = fromDate;
+
+        while (!current.isAfter(toDate)) {
+            total = total.add(getConsumptionKwhByUserForDate(userId, current, zone));
+            days++;
+            current = current.plusDays(1);
+        }
+
+        if (days == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return total.divide(BigDecimal.valueOf(days), 3, RoundingMode.HALF_UP);
+    }
 }
